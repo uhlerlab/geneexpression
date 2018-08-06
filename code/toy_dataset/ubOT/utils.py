@@ -23,6 +23,11 @@ def setup_args():
     options.add_argument('-citer', action="store", dest="critic_iter", default = 5, type = int)
     options.add_argument('-lamb1', action="store", dest="lamb1", default=10, type = float)
     options.add_argument('-lamb2', action="store", dest="lamb2", default=100, type = float)
+    options.add_argument('-psi', action="store", dest="psi2", default="JS")
+    options.add_argument('-lrG', action="store", dest="lrG", default=1e-4, type = float)
+    options.add_argument('-lrD', action="store", dest="lrD", default=1e-4, type = float)
+
+    #options.add_argument('-psi', action="store", dest="psi2", default="EQ")
 
     # model arguments
     options.add_argument('-nz', action="store", dest="nz", default=2, type = int)

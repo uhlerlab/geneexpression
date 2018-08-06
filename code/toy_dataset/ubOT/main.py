@@ -41,8 +41,8 @@ print('Data loaded')
 sys.stdout.flush()
 
 # setup optimizers
-G_opt = optim.RMSprop(list(netG.parameters()), lr = 1e-4)
-D_opt = optim.RMSprop(list(netD.parameters()), lr = 1e-4)
+G_opt = optim.RMSprop(list(netG.parameters()), lr = args.lrG)
+D_opt = optim.RMSprop(list(netD.parameters()), lr = args.lrD)
 
 # loss criteria
 logsigmoid = nn.LogSigmoid()
@@ -64,14 +64,14 @@ for epoch in range(args.max_iter):
         s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
         if torch.cuda.is_available():
             s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
-        
+
 #================== Train generator =========================
         if it % args.critic_iter == args.critic_iter-1:
             netG.train()
             netD.eval()
 
             netG.zero_grad()
-            
+
             # pass source inputs through generator network
             s_generated, s_scale = netG(s_inputs)
 
@@ -80,7 +80,11 @@ for epoch in range(args.max_iter):
 
             # compute loss
             #G_loss = args.lamb1*mse(s_generated, s_inputs) -torch.mean(s_scale*logsigmoid(s_outputs)) - args.lamb2*torch.mean(s_scale*(1-torch.log(s_scale)))
-            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs)) 
+            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) 
+            if args.psi2 == "EQ":
+                G_loss += - args.lamb2*torch.mean(s_scale*s_outputs)
+            else:
+                G_loss += - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs))
 
             # update params
             G_loss.backward()
@@ -93,7 +97,7 @@ for epoch in range(args.max_iter):
             netG.eval()
 
             netD.zero_grad()
-            
+
             # pass source inputs through generator network
             s_generated, s_scale = netG(s_inputs)
 
@@ -101,14 +105,18 @@ for epoch in range(args.max_iter):
             s_outputs, t_outputs = netD(s_generated), netD(t_inputs)
 
             # compute loss
-            D_loss = -torch.mean(s_scale*(logsigmoid(s_outputs)-s_outputs)) - torch.mean(logsigmoid(t_outputs)) #+ calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
+            D_loss = 0
+            if args.psi2 == "EQ":
+                D_loss += torch.mean(s_scale*s_outputs) - torch.mean(t_outputs)
+            else:
+                D_loss += -torch.mean(s_scale*(logsigmoid(s_outputs)-s_outputs)) - torch.mean(logsigmoid(t_outputs)) #+ calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
 
             # update params
             D_loss.backward()
             D_opt.step()
 
 #================= Log results ===========================================
-        
+
     netD.eval()
     netG.eval()
 
@@ -117,12 +125,13 @@ for epoch in range(args.max_iter):
         s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
         if torch.cuda.is_available():
             s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
-        
+
         s_generated, s_scale = netG(s_inputs)
         s_outputs, t_outputs = netD(s_generated), netD(t_inputs)
-        
+
         #W_loss = torch.mean(s_scale*(logsigmoid(s_outputs)-s_outputs)) + torch.mean(logsigmoid(t_outputs))
-        W_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs)) + args.lamb2*torch.mean(logsigmoid(t_outputs))
+        #W_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs)) + args.lamb2*torch.mean(logsigmoid(t_outputs))
+        W_loss = -torch.mean(s_scale*logsigmoid(s_outputs)) + torch.mean(logsigmoid(t_outputs))
         tracker.add(W_loss.cpu().data, num)
 
     tracker.tick()
@@ -130,15 +139,15 @@ for epoch in range(args.max_iter):
     # save models
     torch.save(netD.cpu().state_dict(), args.save_name+"_netD.pth")
     torch.save(netD.cpu().state_dict(), args.save_name+"_netG.pth")
-    
+
     if torch.cuda.is_available():
         netD.cuda()
         netG.cuda()
-    
+
     # save tracker
     with open(args.save_name+"_tracker.pkl", 'wb') as f:
         pickle.dump(tracker, f)
-    
+
     # visualize progress
     if epoch % 10 == 0:
         utils.plot(tracker, s_inputs.cpu().data.numpy(), s_generated.cpu().data.numpy(), t_inputs.cpu().data.numpy(), args.env, vis)
