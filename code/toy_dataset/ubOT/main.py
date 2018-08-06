@@ -129,6 +129,14 @@ for epoch in range(args.max_iter):
         s_generated, s_scale = netG(s_inputs)
         s_outputs, t_outputs = netD(s_generated), netD(t_inputs)
 
+        # save transported points
+        if epoch%10==0 and epoch>300:
+            with open(args.save_name+str(epoch)+"_trans.txt", 'ab') as f:
+                np.savetxt(f, s_generated.cpu().data.numpy(), fmt='%f')
+            with open(args.save_name+str(epoch)+"_rho.txt", 'ab') as f:
+                np.savetxt(f, s_scale.cpu().data.numpy(), fmt='%f')
+
+        # update tracker
         #W_loss = torch.mean(s_scale*(logsigmoid(s_outputs)-s_outputs)) + torch.mean(logsigmoid(t_outputs))
         #W_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs)) + args.lamb2*torch.mean(logsigmoid(t_outputs))
         W_loss = -torch.mean(s_scale*logsigmoid(s_outputs)) + torch.mean(logsigmoid(t_outputs))
