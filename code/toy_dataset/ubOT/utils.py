@@ -19,10 +19,10 @@ def setup_args():
 
     # training arguments
     options.add_argument('-bs', action="store", dest="batch_size", default = 64, type = int)
-    options.add_argument('-iter', action="store", dest="max_iter", default = 1000, type = int)
+    options.add_argument('-iter', action="store", dest="max_iter", default = 100, type = int)
     options.add_argument('-citer', action="store", dest="critic_iter", default = 5, type = int)
-    options.add_argument('-lamb1', action="store", dest="lamb1", default=1, type = float)
-    options.add_argument('-lamb2', action="store", dest="lamb2", default=10, type = float)
+    options.add_argument('-lamb1', action="store", dest="lamb1", default=10, type = float)
+    options.add_argument('-lamb2', action="store", dest="lamb2", default=100, type = float)
 
     # model arguments
     options.add_argument('-nz', action="store", dest="nz", default=2, type = int)
@@ -76,13 +76,13 @@ class Tracker(object):
 
 #============= DATA VISUALIZATION ==============
 
-
 def init_visdom(env):
     vis = visdom.Visdom()
     vis.close(env=env)
+    return vis
 
 
-def plot(tracker, s_inputs, s_generated, t_inputs, env)
+def plot(tracker, s_inputs, s_generated, t_inputs, env, vis):
     # close old plots
     vis.close(env=env)
     # update plots
@@ -95,17 +95,17 @@ def plot(tracker, s_inputs, s_generated, t_inputs, env)
     )
 
     Scatter = vis.scatter(
-        X=s_inputs.cpu().data.numpy(),
+        X=s_inputs,
         #win=Scatter,
         env=env,
         name="Source",
-        opts=dict(
-            markercolor=s_inputs.cpu().data.numpy()[:,1]
-        ),
+#        opts=dict(
+#            markercolor=s_inputs[:,0]+10
+#        ),
     )
 
     Scatter = vis.scatter(
-        X=t_inputs.cpu().data.numpy(),
+        X=t_inputs,
         win=Scatter,
         env=env,
         name="Target",
@@ -117,13 +117,13 @@ def plot(tracker, s_inputs, s_generated, t_inputs, env)
     )
 
     Scatter = vis.scatter(
-        X=s_generated.cpu().data.numpy(),
+        X=s_generated,
         win=Scatter,
         env=env,
         name="Transported",
-        opts=dict(
-            markercolor=s_inputs.cpu().data.numpy()[:,1]
-        ),
+#        opts=dict(
+#            markercolor=s_inputs[:,0]+10
+#        ),
         update='add'
     )
 

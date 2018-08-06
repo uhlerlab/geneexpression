@@ -4,6 +4,7 @@ from torch.autograd import Variable, grad
 
 import GAN
 import utils
+import visdom
 
 import numpy as np
 import sys
@@ -49,7 +50,7 @@ mse = nn.MSELoss(reduce=False)
 
 #=========== LOGGING INITIALIZATION ================
 
-utils.init_visdom(args.env)
+vis = utils.init_visdom(args.env)
 tracker = utils.Tracker()
 
 #============================================================
@@ -140,4 +141,4 @@ for epoch in range(args.max_iter):
     
     # visualize progress
     if epoch % 10 == 0:
-        utils.plot(tracker, s_inputs.cpu().data.numpy(), s_generated.cpu().data.numpy(), t_inputs.cpu().data.numpy(), args.env)
+        utils.plot(tracker, s_inputs.cpu().data.numpy(), s_generated.cpu().data.numpy(), t_inputs.cpu().data.numpy(), args.env, vis)
