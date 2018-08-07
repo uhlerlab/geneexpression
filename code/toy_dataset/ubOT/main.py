@@ -47,6 +47,10 @@ D_opt = optim.RMSprop(list(netD.parameters()), lr = args.lrD)
 # loss criteria
 logsigmoid = nn.LogSigmoid()
 mse = nn.MSELoss(reduce=False)
+LOG2 = Variable(torch.from_numpy(np.ones(1)*np.log(2)).float())
+print(LOG2)
+if torch.cuda.is_available():
+    LOG2 = LOG2.cuda()
 
 #=========== LOGGING INITIALIZATION ================
 
@@ -80,11 +84,14 @@ for epoch in range(args.max_iter):
 
             # compute loss
             #G_loss = args.lamb1*mse(s_generated, s_inputs) -torch.mean(s_scale*logsigmoid(s_outputs)) - args.lamb2*torch.mean(s_scale*(1-torch.log(s_scale)))
-            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) 
+            #G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale)))
+            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean(-torch.log(s_scale)+s_scale)
+
             if args.psi2 == "EQ":
                 G_loss += - args.lamb2*torch.mean(s_scale*s_outputs)
             else:
-                G_loss += - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs))
+                #G_loss += - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs))
+                G_loss += args.lamb2*torch.mean(s_scale*(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs))
 
             # update params
             G_loss.backward()
@@ -109,7 +116,7 @@ for epoch in range(args.max_iter):
             if args.psi2 == "EQ":
                 D_loss += torch.mean(s_scale*s_outputs) - torch.mean(t_outputs)
             else:
-                D_loss += -torch.mean(s_scale*(logsigmoid(s_outputs)-s_outputs)) - torch.mean(logsigmoid(t_outputs)) #+ calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
+                D_loss += -torch.mean(s_scale*(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs)) - torch.mean(LOG2.expand_as(t_outputs)+logsigmoid(t_outputs)) #+ calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
 
             # update params
             D_loss.backward()
@@ -139,7 +146,10 @@ for epoch in range(args.max_iter):
         # update tracker
         #W_loss = torch.mean(s_scale*(logsigmoid(s_outputs)-s_outputs)) + torch.mean(logsigmoid(t_outputs))
         #W_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale))) - args.lamb2*torch.mean(s_scale*logsigmoid(s_outputs)) + args.lamb2*torch.mean(logsigmoid(t_outputs))
-        W_loss = -torch.mean(s_scale*logsigmoid(s_outputs)) + torch.mean(logsigmoid(t_outputs))
+        #W_loss = -torch.mean(s_scale*logsigmoid(s_outputs)) + torch.mean(logsigmoid(t_outputs))
+        W_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean(-torch.log(s_scale)+s_scale)
+        W_loss += torch.mean(s_scale*(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs))
+        W_loss += torch.mean(LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))
         tracker.add(W_loss.cpu().data, num)
 
     tracker.tick()
