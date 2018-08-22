@@ -8,6 +8,8 @@ import visualize
 import numpy as np
 import sys
 
+torch.manual_seed(1)
+
 # parse arguments
 def setup_args():
 
@@ -101,30 +103,38 @@ def save(epoch):
 
 def generate_image(epoch):
 
-    num_imgs = 1
+    z = torch.normal(torch.zeros(args.batch_size, args.nz), 1)
 
-    for i in range(5):
-        inputs, _ = train_loader.dataset[np.random.randint(100)]
-        inputs = Variable(inputs.view(1,1,16,16))
+    if torch.cuda.is_available():
+        z = z.cuda()
 
+    z = Variable(z)
+
+    samples = model.generate(z)
+    visualize.visualize_samples("Generated", samples.cpu().data, args.env)
+
+
+    for inputs, _ in train_loader:
+        inputs = Variable(inputs)
         if torch.cuda.is_available():
             inputs = inputs.cuda()
 
         recon_inputs, _, _, _ = model(inputs)
 
-        visualize.visualize_samples("Train "+str(epoch)+" inputs", inputs.cpu().data.view(num_imgs,1,16,16), args.env)
-        visualize.visualize_samples("Train "+str(epoch)+" recon", recon_inputs.cpu().data.view(num_imgs,1,16,16), args.env)
+        visualize.visualize_samples("Train "+str(epoch)+" inputs", inputs.cpu().data, args.env)
+        visualize.visualize_samples("Train "+str(epoch)+" recon", recon_inputs.cpu().data, args.env)
+        break
 
-        inputs, _ = test_loader.dataset[np.random.randint(100)]
-        inputs = Variable(inputs.view(1,1,16,16))
-
+    for inputs, _ in test_loader:
+        inputs = Variable(inputs)
         if torch.cuda.is_available():
             inputs = inputs.cuda()
 
         recon_inputs, _, _, _ = model(inputs)
 
-        visualize.visualize_samples("Test "+str(epoch)+" inputs", inputs.cpu().data.view(num_imgs, 1, 64, 64), args.env)
-        visualize.visualize_samples("Test "+str(epoch)+" recon", recon_inputs.cpu().data.view(num_imgs, 1, 64, 64), args.env)
+        visualize.visualize_samples("Test "+str(epoch)+" inputs", inputs.cpu().data, args.env)
+        visualize.visualize_samples("Test "+str(epoch)+" recon", recon_inputs.cpu().data, args.env)
+        break
 
 # main training loop
 visualize.reset(args.env)

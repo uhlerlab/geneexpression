@@ -21,7 +21,8 @@ class VAE(nn.Module):
 
         self.decoder = nn.Sequential(
             nn.Linear(self.latent_size, self.input_size),
-            nn.Linear(self.input_size, self.input_size)
+            nn.Linear(self.input_size, self.input_size),
+            nn.Sigmoid()
         )
 
     def encode(self, x):
@@ -39,7 +40,7 @@ class VAE(nn.Module):
 
     def decode(self, z):
         z = self.decoder(z)
-        return z.view(-1, self.dim, self.dim)
+        return z.view(-1, 1, self.dim, self.dim)
 
     def get_latent_var(self, x):
         mu, logvar = self.encode(x)
