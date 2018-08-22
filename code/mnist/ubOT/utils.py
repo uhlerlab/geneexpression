@@ -19,14 +19,16 @@ def setup_args():
     options.add_argument('-sd', action="store", dest="save_file", default="./results/")
     options.add_argument('-env', action="store", dest="env", default="ubOT_mnist")
 
-    # training arguments
-    options.add_argument('-bs', action="store", dest="batch_size", default = 64, type = int)
+    options.add_argument('-bs', action="store", dest="batch_size", default = 16, type = int)
     options.add_argument('-iter', action="store", dest="max_iter", default = 100, type = int)
     options.add_argument('-citer', action="store", dest="critic_iter", default = 5, type = int)
+    options.add_argument('-lamb0', action="store", dest="lamb0", default=1, type = float)
+    options.add_argument('-lamb1', action="store", dest="lamb1", default=10, type = float)
+    options.add_argument('-lamb2', action="store", dest="lamb2", default=100, type = float)
     options.add_argument('-psi', action="store", dest="psi2", default="JS")
-    options.add_argument('-lrG', action="store", dest="lrG", default=1e-4, type = float)
+    options.add_argument('-lrG', action="store", dest="lrG", default=1e-3, type = float)
     options.add_argument('-lrD', action="store", dest="lrD", default=1e-4, type = float)
-    
+
     return options.parse_args()
 
 #============= DATA LOADING ==============
@@ -36,7 +38,7 @@ class MNISTDataset(Dataset):
     def __init__(self, data1, data2, mode = "train"):
         self.data1 = data1
         self.data2 = data2
-        self.transform = transforms.Compose([transforms.Resize(32), transforms.ToTensor()])
+        self.transform = transforms.Compose([transforms.Resize(28), transforms.ToTensor()])
         self.mode = mode
 
     def __len__(self):
@@ -87,7 +89,7 @@ def setup_data_loaders(batch_size):
         traindata_2.append(data[int(s*n):])
         print(data[int(s*n):].size())
         trainlabels_2.append(labels[int(s*n):])
-        
+
     traindata_1 = torch.cat(traindata_1)
     trainlabels_1 = torch.cat(trainlabels_1)
     traindata_2 = torch.cat(traindata_2)
@@ -130,7 +132,7 @@ class Tracker(object):
     def tick(self):
         avg = self.sum / self.count
         self.list_avg.append(avg)
-        
+
         self.epoch += 1
         self.sum = 0
         self.count = 0
@@ -147,7 +149,7 @@ def init_visdom(env):
     return vis
 
 
-def plot(tracker, env, vis):
+def plot(tracker, inputs, recon, env, vis):
     # close old plots
     vis.close(env=env)
     # update plots
@@ -158,3 +160,25 @@ def plot(tracker, env, vis):
         name="Loss",
 
     )
+    # generate images
+    visualize_samples("input", inputs.view(-1,1,28,28), env, vis)
+    visualize_samples("recon", recon.view(-1,1,28,28), env, vis)
+
+def visualize_samples(title, sample, env, vis):
+    vis.images(
+        sample,
+        opts=dict(title=title),
+        env=env
+        )
+    vis.save([env])
+
+
+def test():
+    tloader, eloader = setup_data_loaders(2)
+    img1, img2 = tloader.dataset[0]
+    print(img1.size())
+    print(img2.size())
+
+
+if __name__ == "__main__":
+    test()

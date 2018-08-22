@@ -1,6 +1,6 @@
 #!/bin/bash
 
-savedir="./results/"
+savedir="./results/exp1/"
 mkdir $savedir
 
-python main.py -sd $savedir -iter 1000 -psi "JS" -citer 5 -lrG 0.0001 -lrD 0.0001 > "${savedir}log.txt"
+python main.py -sd $savedir -iter 100 -lamb0 1000 -lamb1 1 -lamb2 1 -psi "JS" -citer 5 -lrG 0.0001 -lrD 0.0001 > "${savedir}log.txt"
