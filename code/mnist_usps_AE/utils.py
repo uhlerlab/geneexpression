@@ -21,9 +21,13 @@ class CombinedDataset(Dataset):
 
     def __init__(self, mode = "train", split = 0.9):
         self.data, self.labels = self.combine_data(mode, split)
+        self.is_mnist = self.sort_data()
         
         self.transform = transforms.Compose([transforms.Resize(16), transforms.ToTensor()])
         self.mode = mode
+
+    def sort_data():
+        return [1 if self.data[idx].shape[1]==28 else 0 for idx in range(len(self.data))]
 
     def get_USPS(self):
         file_path = './data/usps_resampled.mat'
@@ -115,15 +119,15 @@ class CombinedDataset(Dataset):
         img = Image.fromarray(img, mode='L')
         img = self.transform(img)
 
-        return (img, self.labels[idx])
+        return (img, (self.labels[idx], self.is_mnist[idx]))
 
 
 def setup_data_loaders(batch_size):
     trainset = CombinedDataset()
     testset = CombinedDataset(mode="test")
 
-    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=1, pin_memory=True)
-    testloader = DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=1, pin_memory=True)
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=1, pin_memory=True)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=1, pin_memory=True)
 
     return trainloader, testloader
 
