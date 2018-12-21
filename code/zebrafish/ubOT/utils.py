@@ -144,4 +144,3 @@ def plot(tracker, tracker_plot, scale_plot, s_scale, env, vis):
         )
 
     return W1Plot, scale_plot
-
