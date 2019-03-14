@@ -14,7 +14,8 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 random.seed(0)
 
-#============= ARGUMENT PARSING ==============
+
+# ============= ARGUMENT PARSING ==============
 
 def setup_args():
 
@@ -63,6 +64,7 @@ def setup_data_loaders(batch_size):
 #============= DATA LOGGING ==============
 
 
+
 class Tracker(object):
     def __init__(self):
         self.epoch = 0
@@ -87,44 +89,55 @@ class Tracker(object):
         return self.list_avg
 
 
-
-#============= DATA VISUALIZATION ==============
+# ============= DATA VISUALIZATION ==============
 
 def init_visdom(env):
-    vis = visdom.Visdom()
-    vis.close(env=env)
+    vis = visdom.Visdom(port='8096')
+    # vis.port(8096)
+    # vis.close(env=env)
     return vis
 
 
-def plot(tracker, tracker_plot, scale_plot, s_scale, env, vis):
+def plot(tracker, epoch, s_inputs, s_generated, t_inputs, env, vis):
+    # close old plots
+    vis.close(env=env)
     # update plots
+    print("got here", s_inputs)
+    W1Plot = vis.line(
+        Y=np.array(tracker.get_status()),
+        X=np.array(range(tracker.epoch)),
+        env=env,
+        name="Loss",
+    )
+    
+   # Scatter = vis.scatter(
+        #X=s_inputs,
+        #env=env,
+        #name="Source",
+        #opts=dict(
+           # markercolor=s_inputs
+        #),
+   # )
 
-    if tracker_plot is None:
-        W1Plot=vis.line(
-            Y=np.array(tracker.get_status()),
-            X=np.array(range(tracker.epoch)),
-            env=env,
-        )
-    else:
-        W1Plot=vis.line(
-            Y=np.array(tracker.get_status()),
-            X=np.array(range(tracker.epoch)),
-            env=env,
-            win=tracker_plot,
-            update='replace',
-        )
+    #Scatter = vis.scatter(
+        #X=t_inputs,
+        #env=env,
+        #name="Target",
+        #opts=dict(
+        #    markercolor=np.zeros(shape=(len(t_inputs.data),)),
+        #    markersymbol="cross",
+        #),
+        #update='add'
+#    )
 
-    if scale_plot is None:
-        scale_plot=vis.boxplot(
-            X=s_scale,
-            env=env,
-        )
+    # Scatter = vis.scatter(
+       # X=s_generated,
+       # win=Scatter,
+       # env=env,
+       # name="Transported",
+#        opts=dict(
+#            markercolor=s_inputs[:,0]+10
+#        ),
+       # update='add'
+    # )
 
-    else:
-        scale_plot=vis.boxplot(
-            X=s_scale,
-            env=env,
-            win=scale_plot,
-        )
-
-    return W1Plot, scale_plot

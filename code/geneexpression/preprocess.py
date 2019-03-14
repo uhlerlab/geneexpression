@@ -51,5 +51,3 @@ def setup_data_loaders():
     data_2.dump('dat2')
 
 setup_data_loaders()
-                                                                                                                                      53,1          Bot
-
