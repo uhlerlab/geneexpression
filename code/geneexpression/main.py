@@ -20,7 +20,8 @@ args = utils.setup_args()
 args.save_name = args.save_file + args.env
 print(args)
 
-#============ GRADIENT PENALTY (for discriminator) ================
+# ============ GRADIENT PENALTY (for discriminator) ================
+
 
 def calc_gradient_penalty(netD, real_data, fake_data):
     alpha = torch.rand(real_data.size(0), 1)
@@ -140,17 +141,22 @@ for epoch in range(args.max_iter):
             # compute loss
 #            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean(-torch.log(s_scale)+s_scale)
 #            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale)))
-            G_loss = args.lamb0*torch.mean(s_scale*torch.sum(mse(
-                s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean((s_scale-1)*torch.log(s_scale))
-            G_loss += calc_gradient_penalty_rho(
+
+            # G_loss = args.lamb0*torch.mean(s_scale*torch.sum(mse(
+            # s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean((s_scale-1)*torch.log(s_scale))
+            G_loss = calc_gradient_penalty_rho(
                 netG, s_inputs.data, s_inputs.data[torch.randperm(s_inputs.size(0))])
 
             if args.psi2 == "EQ":
-                G_loss += - args.lamb2*torch.mean(s_scale*s_outputs)
+               # G_loss += - args.lamb2*torch.mean(s_scale*s_outputs)
+                G_loss += -args.lamb2*torch.mean(s_outputs)
             else:
+                # G_loss += args.lamb2 * \
+                    # torch.mean(s_scale*(LOG2.expand_as(s_outputs) +
+                                        # logsigmoid(s_outputs)-s_outputs))
                 G_loss += args.lamb2 * \
-                    torch.mean(s_scale*(LOG2.expand_as(s_outputs) +
-                                        logsigmoid(s_outputs)-s_outputs))
+                    torch.mean(LOG2.expand_as(s_outputs) +
+                               logsigmoid(s_outputs) - s_outputs)
             # print(G_loss)
             # update params
             G_loss.backward()
@@ -176,17 +182,20 @@ for epoch in range(args.max_iter):
             D_loss = calc_gradient_penalty(
                 netD, s_generated.data, t_inputs.data)
             if args.psi2 == "EQ":
-                D_loss += torch.mean(s_scale*s_outputs) - torch.mean(t_outputs)
+                #D_loss += torch.mean(s_scale*s_outputs) - torch.mean(t_outputs)
+                D_loss += torch.mean(s_outputs) - torch.mean(t_outputs)
             else:
-                D_loss += -torch.mean(s_scale*(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs)) - torch.mean(
-                    LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))  # + calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
+               # D_loss += -torch.mean(s_scale*(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs)) - torch.mean(
+                   # LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))  # + calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
+                D_loss += -torch.mean(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs) - torch.mean(
+                    LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))
             # print(D_loss)
             # update params
             D_loss.backward()
             D_opt.step()
 
-#================= Log results ===========================================
-    
+# ================= Log results ===========================================
+
     netD.eval()
     netG.eval()
 
@@ -205,7 +214,7 @@ for epoch in range(args.max_iter):
        # W_loss = args.lamb0 * \
        #     torch.mean(torch.sum(mse(s_generated, s_inputs), dim=1))
         W_loss = torch.mean((LOG2.expand_as(s_outputs) +
-                              logsigmoid(s_outputs)-s_outputs))
+                             logsigmoid(s_outputs)-s_outputs))
         W_loss += torch.mean(LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))
         tracker.add(W_loss.cpu().data, num)
         # save transported points
@@ -229,10 +238,10 @@ for epoch in range(args.max_iter):
     # save tracker
     with open(args.save_name+"_tracker.pkl", 'wb') as f:
         pickle.dump(tracker, f)
-
+    if epoch > 250:
+        print("epoch is correct")
     if epoch % 5 == 0 and epoch > 5:
         # print("HELLO", s_inputs.cpu().data.numpy(), "HELLO", s_generated.cpu(
         # ).data.numpy(), "HELLO", t_inputs.cpu().data.numpy())
         utils.plot(tracker, epoch, s_inputs.cpu().data.numpy(), s_generated.cpu(
         ).data.numpy(), t_inputs.cpu().data.numpy(), args.env, vis)
-
