@@ -142,24 +142,24 @@ for epoch in range(args.max_iter):
 
                 # pass generated source data and target inputs through discriminator network
                 s_outputs = netD(s_generated)
-
+                 
                 # compute loss
         #            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean(-torch.log(s_scale)+s_scale)
         #            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale)))
 
                 # G_loss = args.lamb0*torch.mean(s_scale*torch.sum(mse(
                 # s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean((s_scale-1)*torch.log(s_scale))
-                G_loss = calc_gradient_penalty_rho(
-                    netG, s_inputs.data, s_inputs.data[torch.randperm(s_inputs.size(0))])
+                #G_loss = calc_gradient_penalty_rho(
+                   # netG, s_inputs.data, s_inputs.data[torch.randperm(s_inputs.size(0))])
 
                 if args.psi2 == "EQ":
                    # G_loss += - args.lamb2*torch.mean(s_scale*s_outputs)
-                    G_loss += -args.lamb2*torch.mean(s_outputs)
+                    G_loss = -args.lamb2*torch.mean(s_outputs)
                 else:
                     # G_loss += args.lamb2 * \
                         # torch.mean(s_scale*(LOG2.expand_as(s_outputs) +
                                             # logsigmoid(s_outputs)-s_outputs))
-                    G_loss += args.lamb2 * \
+                    G_loss = args.lamb2 * \
                         torch.mean(LOG2.expand_as(s_outputs) +
                                    logsigmoid(s_outputs) - s_outputs)
                 # print(G_loss)
