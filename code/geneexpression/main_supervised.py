@@ -101,7 +101,7 @@ D_opt = optim.Adam(list(netD.parameters()), lr=args.lrD)
 
 # loss criteria
 logsigmoid = nn.LogSigmoid()
-mse = nn.MSELoss(reduce=False)
+mse = nn.MSELoss()
 LOG2 = Variable(torch.from_numpy(np.ones(1)*np.log(2)).float())
 print(LOG2)
 if torch.cuda.is_available():
@@ -119,132 +119,47 @@ scale_plot = None
 # ============================================================
 
 for epoch in range(args.max_iter):
-    # for loader in [loader1, loader2]:
+  
     for it, (s_inputs, t_inputs) in enumerate(loader):
-        # print("iteration within epoch ", it)
         s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
         if torch.cuda.is_available():
             s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
 
-    # ================== Train generator =========================
         if it % args.critic_iter == args.critic_iter-1:
             netG.train()
-            netD.eval()
-
             netG.zero_grad()
 
-            # pass source inputs through generator network
-            s_generated, s_scale = netG(s_inputs)
-
-            # pass generated source data and target inputs through discriminator network
-            s_outputs = netD(s_generated)
-
-            loss = nn.MSELoss()
-            G_loss = loss(s_outputs, t_inputs)
-    # compute loss
-    #            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean(-torch.log(s_scale)+s_scale)
-    #            G_loss = torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1)) - args.lamb1*torch.mean(s_scale*(1-torch.log(s_scale)))
-     # G_loss = args.lamb0*torch.mean(s_scale*torch.sum(mse(
-            # s_generated, s_inputs), dim=1)) + args.lamb1*torch.mean((s_scale-1)*torch.log(s_scale))
-            # G_loss = calc_gradient_penalty_rho(
-            # netG, s_inputs.data, s_inputs.data[torch.randperm(s_inputs.size(0))])
-            '''if args.psi2 == "EQ":
-                   # G_loss += - args.lamb2*torch.mean(s_scale*s_outputs)
-                    G_loss = -args.lamb2*torch.mean(s_outputs)
-                else:
-                    # G_loss += args.lamb2 * \
-                        # torch.mean(s_scale*(LOG2.expand_as(s_outputs) +
-                                            # logsigmoid(s_outputs)-s_outputs))
-                    G_loss = args.lamb2 * \
-                        torch.mean(LOG2.expand_as(s_outputs) +
-                                   logsigmoid(s_outputs) - s_outputs)
-                '''
-            # print(G_loss)
-            # update params
+            s_outputs, s_scale  = netG(s_inputs)
+           
+            G_loss = mse(s_outputs, t_inputs)
             G_loss.backward()
             G_opt.step()
-
-    # ================== Train discriminator =========================
-
-        else:
-            netD.train()
-            netG.eval()
-
-            netD.zero_grad()
-
-            # pass source inputs through generator network
-            s_generated, s_scale = netG(s_inputs)
-
-            # pass generated source data and target inputs through discriminator network
-            s_outputs, t_outputs = netD(s_generated), netD(t_inputs)
-            loss = nn.MSELoss()
-            D_loss = loss(s_outputs, t_inputs)
-            # compute loss
-            # D_loss = 0
-            ''' D_loss = calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
-            if args.psi2 == "EQ":
-                # D_loss += torch.mean(s_scale*s_outputs) - torch.mean(t_outputs)
-                D_loss += torch.mean(s_outputs) - torch.mean(t_outputs)
-            else:
-                # D_loss += -torch.mean(s_scale*(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs)) - torch.mean(
-                # LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))  # + calc_gradient_penalty(netD, s_generated.data, t_inputs.data)
-                D_loss += -torch.mean(LOG2.expand_as(s_outputs)+logsigmoid(s_outputs)-s_outputs) - torch.mean(
-                        LOG2.expand_as(t_outputs)+logsigmoid(t_outputs))
-            '''   
-            # print(D_loss)
-            # update params
-            D_loss.backward()
-            D_opt.step()
-
-# ================= Log results ===========================================
-
-    netD.eval()
     netG.eval()
-   # for loader in [loader1, loader2]:
     for s_inputs, t_inputs in loader:
         num = s_inputs.size(0)
         s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
         if torch.cuda.is_available():
-            s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
-
-        s_generated, s_scale = netG(s_inputs)
-        s_outputs, t_outputs = netD(s_generated), netD(t_inputs)
-
-       # update tracker
-       # W_loss = args.lamb0*torch.mean(s_scale*torch.sum(mse(s_generated, s_inputs), dim=1) + args.lamb1*torch.mean(-torch.log(s_scale)+s_scale)
-       # W_loss += torch.mean(s_scale*(LOG2.expand_as(s_outputs) + logsigmoid(s_outputs)-s_outputs))
-       # W_loss = args.lamb0 * \
-       #     torch.mean(torch.sum(mse(s_generated, s_inputs), dim=1))
-        W_loss = torch.mean((LOG2.expand_as(s_outputs) +
-                             logsigmoid(s_outputs)-s_outputs))
-        W_loss += torch.mean(LOG2.expand_as(t_outputs) +
-                             logsigmoid(t_outputs))
+                s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
+        s_outputs, s_scale = netG(s_inputs)
+        W_loss = mse(s_inputs, s_outputs)
         tracker.add(W_loss.cpu().data, num)
         # save transported points
         if epoch % 10 == 0 and epoch > 200:
             with open(args.save_name+str(epoch)+"_trans.txt", 'ab') as f:
-                np.savetxt(f, s_generated.cpu().data.numpy(), fmt='%f')
-            # with open(args.save_name+str(epoch)+"_rho.txt", 'ab') as f:
-                # np.savetxt(f, s_scale.cpu().data.numpy(), fmt='%f')
-    # tracker.add(W_loss.cpu().data, num)
+                np.savetxt(f, s_outputs.cpu().data.numpy(), fmt='%f')
 
     tracker.tick()
 
-    # save models
-    torch.save(netD.cpu().state_dict(), args.save_name+"_netD.pth")
+       
     torch.save(netG.cpu().state_dict(), args.save_name+"_netG.pth")
 
     if torch.cuda.is_available():
-        netD.cuda()
         netG.cuda()
-    # save tracker
-    print("Got here")
+       
     with open(args.save_name+"_tracker.pkl", 'wb') as f:
         pickle.dump(tracker, f)
-    if epoch > 250:
-        print("epoch is correct")
     if epoch % 5 == 0 and epoch > 5:
-        # print("HELLO", s_inputs.cpu().data.numpy(), "HELLO", s_generated.cpu(
-        # ).data.numpy(), "HELLO", t_inputs.cpu().data.numpy())
-        utils.plot(tracker, epoch, s_inputs.cpu().data.numpy(), s_generated.cpu(
-        ).data.numpy(), t_inputs.cpu().data.numpy(), args.env, vis)
+        utils.plot(tracker, epoch, t_inputs.cpu().data.numpy(), args.env, vis)
+
+
+

@@ -90,6 +90,7 @@ def setup_data_loaders_semisupervised():
     clone_df = pd.DataFrame(clone_data)
     day4_6Ind = []
     indices = []
+    repeated = []
     for ind in day2[:500]:
         foundClone = False
         cloneInd = 0
@@ -100,8 +101,11 @@ def setup_data_loaders_semisupervised():
         if foundClone != False:
             sameClone = pd.DataFrame(
                 clone_df.loc[clone_df[cloneInd] == 1]).index
-            sameCloneInd = [day4_6[i]
-                            for i in range(len(day4_6)) if day4_6[i] in sameClone]
+            sameCloneInd = [] 
+            for i in range(len(day4_6)):
+                if day4_6[i] in sameClone and day4_6[i] not in repeated:
+                     repeated.append(day4_6[i])
+                     sameCloneInd.append(day4_6[i]) 
             for elem in sameCloneInd:
                 day4_6Ind.append(elem)
                 data_1.append(countsInVitroCscMatrix[ind])
@@ -157,6 +161,7 @@ def setup_data_loaders_supervised():
     data_1 = []
     data_2 = []
     clone_df = pd.DataFrame(clone_data)
+    repeated = []
     for ind in day2:
         foundClone = False
         cloneInd = 0
@@ -167,8 +172,11 @@ def setup_data_loaders_supervised():
         if foundClone != False:
             sameClone = pd.DataFrame(
                 clone_df.loc[clone_df[cloneInd] == 1]).index
-            sameCloneInd = [day4_6[i]
-                            for i in range(len(day4_6)) if day4_6[i] in sameClone]
+            sameCloneInd = [] 
+            for i in range(len(day4_6)):
+                if day4_6[i] in sameClone and day4_6[i] not in repeated:
+                     repeated.append(day4_6[i])
+                     sameCloneInd.append(day4_6[i])
             for elem in sameCloneInd:
                 data_1.append(countsInVitroCscMatrix[ind])
                 data_2.append(countsInVitroCscMatrix[elem])

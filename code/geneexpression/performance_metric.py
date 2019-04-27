@@ -8,7 +8,7 @@ cellMetadataInVitroDay = np.loadtxt(
     'cell_metadata_in_vitro.txt', skiprows=1, usecols=(0,))
 metadata = pd.read_csv('cell_metadata_in_vitro.txt', sep='\\t', header=0)
 cellMetadataInVitroType = np.genfromtxt('cell_metadata_in_vitro.txt', dtype='str',  skip_header=1, usecols=(2,))
-transportedPoints = np.loadtxt('results/exp4/nehaenv660_trans.txt')
+transportedPoints = np.loadtxt('results/exp4/nehaenv1000_trans.txt')
 targetDataset = np.load('dat2')
 indices = np.load('ind')
 y = []
