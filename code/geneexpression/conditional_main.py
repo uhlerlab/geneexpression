@@ -1,8 +1,9 @@
 import torch
 from torch import nn, optim
 from torch.autograd import Variable, grad
+import torch.nn.functional as fn
 
-import GAN
+import cGAN
 import utils
 import visdom
 
@@ -77,11 +78,11 @@ def calc_gradient_penalty_rho(netD, real_data, fake_data):
 
 # ============= TRAINING INITIALIZATION ==============
 # initialize discriminator
-netD = GAN.Discriminator(args.nz, args.n_hidden)
+netD = cGAN.Discriminator(5964, args.n_hidden)
 print("Discriminator loaded")
 
 # initialize generator
-netG = GAN.Generator(args.nz, args.n_hidden)
+netG = cGAN.Generator(5964, args.n_hidden)
 print("Generator loaded")
 
 if torch.cuda.is_available():
@@ -107,10 +108,10 @@ LOG2 = Variable(torch.from_numpy(np.ones(1)*np.log(2)).float())
 print(LOG2)
 if torch.cuda.is_available():
     LOG2 = LOG2.cuda()
-mb_size = 64
+mb_size = 509
 ones_label = Variable(torch.ones(mb_size, 1))
 zeros_label = Variable(torch.zeros(mb_size, 1))
-
+#ones_label_2 = Variable(torch.ones(100, 1))
 
 # =========== LOGGING INITIALIZATION ================
 
@@ -124,7 +125,8 @@ scale_plot = None
 # ============================================================
 
 for epoch in range(args.max_iter):
-        for it, ((s_inputs, clusters), t_inputs) in enumerate(loader):
+        for it, (s_inputs, clusters, t_inputs) in enumerate(loader):
+            #print(epoch, it)
             s_inputs, clusters, t_inputs = Variable(s_inputs), Variable(clusters), Variable(t_inputs)
             if torch.cuda.is_available():
                 s_inputs, clusters, t_inputs = s_inputs.cuda(), clusters.cuda(), t_inputs.cuda()
@@ -138,13 +140,14 @@ for epoch in range(args.max_iter):
 
                 # pass source inputs through generator network
                 s_generated, s_scale = netG(s_inputs, clusters)
+                #print(s_generated.shape, t_inputs.shape)
 
                 # pass generated source data and target inputs through discriminator network
-                s_outputs, t_outputs = netD(s_generated, cluters), netD(t_inputs, clusters)
+                s_outputs, t_outputs = netD(s_generated, clusters), netD(t_inputs, clusters)
                 D_real = netD(s_inputs, clusters)
 
-                D_loss_real = nn.binary_cross_entropy(D_real, ones_label)
-                D_loss_fake = nn.binary_cross_entropy(s_outputs, zeros_label)
+                D_loss_real = fn.binary_cross_entropy(D_real.abs(), ones_label)
+                D_loss_fake = fn.binary_cross_entropy(s_outputs.abs(), zeros_label)
                 D_loss = D_loss_real + D_loss_fake
                                
                 D_loss.backward()
@@ -153,7 +156,7 @@ for epoch in range(args.max_iter):
         # ================== Train generator =========================
 
             else:
-               netG.train()
+                netG.train()
                 netD.eval()
 
                 netG.zero_grad()
@@ -163,8 +166,11 @@ for epoch in range(args.max_iter):
 
                 # pass generated source data and target inputs through discriminator network
                 s_outputs = netD(s_generated, clusters)
-            
-                G_loss = nn.binary_cross_entropy(s_outputs, ones_label)
+                arr = s_outputs.abs() - s_outputs.abs().mean(axis=0)
+                arr = arr / np.abs(arr).max(axis=0)
+ 
+                #print(s_outputs.shape, s_generated.shape) 
+                G_loss = fn.binary_cross_entropy(arr, ones_label)
                
                 G_loss.backward()
                 G_opt.step()
@@ -175,7 +181,7 @@ for epoch in range(args.max_iter):
         netD.eval()
         netG.eval()
  
-        for s_inputs, t_inputs in loader:
+        for s_inputs, clusters, t_inputs in loader:
             num = s_inputs.size(0)
             s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
             if torch.cuda.is_available():

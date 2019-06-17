@@ -42,7 +42,7 @@ class Generator(nn.Module):
             nn.Linear(self.hidden, self.hidden),
             nn.BatchNorm1d(self.hidden),
             nn.ReLU(), 
-            nn.Linear(self.hidden, self.nz),
+            nn.Linear(self.hidden, 100),
         )
         self.scale = nn.Sequential(
             nn.Linear(self.nz, self.nz),
