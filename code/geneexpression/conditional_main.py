@@ -78,11 +78,11 @@ def calc_gradient_penalty_rho(netD, real_data, fake_data):
 
 # ============= TRAINING INITIALIZATION ==============
 # initialize discriminator
-netD = cGAN.Discriminator(5964, args.n_hidden)
+netD = cGAN.Discriminator(5964, 600)
 print("Discriminator loaded")
 
 # initialize generator
-netG = cGAN.Generator(5964, args.n_hidden)
+netG = cGAN.Generator(5964, 500)
 print("Generator loaded")
 
 if torch.cuda.is_available():
@@ -125,94 +125,96 @@ scale_plot = None
 # ============================================================
 
 for epoch in range(args.max_iter):
-        for it, (s_inputs, clusters, t_inputs) in enumerate(loader):
-            #print(epoch, it)
-            s_inputs, clusters, t_inputs = Variable(s_inputs), Variable(clusters), Variable(t_inputs)
-            if torch.cuda.is_available():
-                s_inputs, clusters, t_inputs = s_inputs.cuda(), clusters.cuda(), t_inputs.cuda()
+    for it, (s_inputs, clusters, t_inputs) in enumerate(loader):
+        #print(epoch, it)
+        s_inputs, clusters, t_inputs = Variable(
+            s_inputs), Variable(clusters), Variable(t_inputs)
+        if torch.cuda.is_available():
+            s_inputs, clusters, t_inputs = s_inputs.cuda(), clusters.cuda(), t_inputs.cuda()
 
-        # ================== Train discriminator =========================
-            if it % args.critic_iter != args.critic_iter-1:
-                netD.train()
-                netG.eval()
+    # ================== Train discriminator =========================
+        if it % args.critic_iter != args.critic_iter-1:
+            netD.train()
+            netG.eval()
 
-                netD.zero_grad()
+            netD.zero_grad()
 
-                # pass source inputs through generator network
-                s_generated, s_scale = netG(s_inputs, clusters)
-                #print(s_generated.shape, t_inputs.shape)
+            # pass source inputs through generator network
+            s_generated, s_scale = netG(s_inputs, clusters)
+            #print(s_generated.shape, t_inputs.shape)
 
-                # pass generated source data and target inputs through discriminator network
-                s_outputs, t_outputs = netD(s_generated, clusters), netD(t_inputs, clusters)
-                D_real = netD(s_inputs, clusters)
+            # pass generated source data and target inputs through discriminator network
+            s_outputs, t_outputs = netD(
+                s_generated, clusters), netD(t_inputs, clusters)
+            D_real = netD(s_inputs, clusters)
+            
+            D_loss_real = fn.binary_cross_entropy_with_logits(D_real, ones_label)
+            
+            D_loss_fake = fn.binary_cross_entropy_with_logits(s_outputs, zeros_label)
+            D_loss = D_loss_real + D_loss_fake
 
-                D_loss_real = fn.binary_cross_entropy(D_real.abs(), ones_label)
-                D_loss_fake = fn.binary_cross_entropy(s_outputs.abs(), zeros_label)
-                D_loss = D_loss_real + D_loss_fake
-                               
-                D_loss.backward()
-                D_opt.step()
-                
-        # ================== Train generator =========================
+            D_loss.backward()
+            D_opt.step()
 
-            else:
-                netG.train()
-                netD.eval()
+    # ================== Train generator =========================
 
-                netG.zero_grad()
+        else:
+            netG.train()
+            netD.eval()
 
-                # pass source inputs through generator network
-                s_generated, s_scale = netG(s_inputs, clusters)
+            netG.zero_grad()
 
-                # pass generated source data and target inputs through discriminator network
-                s_outputs = netD(s_generated, clusters)
-                arr = s_outputs.abs() - s_outputs.abs().mean(axis=0)
-                arr = arr / np.abs(arr).max(axis=0)
- 
-                #print(s_outputs.shape, s_generated.shape) 
-                G_loss = fn.binary_cross_entropy(arr, ones_label)
-               
-                G_loss.backward()
-                G_opt.step()
+            # pass source inputs through generator network
+            s_generated, s_scale = netG(s_inputs, clusters)
 
-                
+            # pass generated source data and target inputs through discriminator network
+            s_outputs = netD(s_generated, clusters)
+            
+            #print(s_outputs.shape, s_generated.shape)
+            G_loss = fn.binary_cross_entropy_with_logits(s_outputs, ones_label)
+
+            G_loss.backward()
+            G_opt.step()
+
+
 # ================= Log results ===========================================
 
-        netD.eval()
-        netG.eval()
- 
-        for s_inputs, clusters, t_inputs in loader:
-            num = s_inputs.size(0)
-            s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
-            if torch.cuda.is_available():
-                s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
+    netD.eval()
+    netG.eval()
 
-            s_generated, s_scale = netG(s_inputs, clusters)
-            s_outputs, t_outputs = netD(s_generated, clusters), netD(t_inputs, clusters)
+    for s_inputs, clusters, t_inputs in loader:
+        num = s_inputs.size(0)
+        s_inputs, t_inputs = Variable(s_inputs), Variable(t_inputs)
+        if torch.cuda.is_available():
+            s_inputs, t_inputs = s_inputs.cuda(), t_inputs.cuda()
 
-            if epoch % 10 == 0 and epoch > 200:
-                with open(args.save_name+str(epoch)+"_trans.txt", 'ab') as f:
-                    np.savetxt(f, s_generated.cpu().data.numpy(), fmt='%f')
-            W_loss = torch.mean(LOG2.expand_as(s_outputs) +
-                                 logsigmoid(s_outputs)-s_outputs)
-            W_loss += torch.mean(LOG2.expand_as(t_outputs) +
-                                 logsigmoid(t_outputs))
-            tracker.add(W_loss.cpu().data, num)
+        s_generated, s_scale = netG(s_inputs, clusters)
+        s_outputs, t_outputs = netD(
+            s_generated, clusters), netD(t_inputs, clusters)
 
-        tracker.tick()
+        if epoch % 10 == 0 and epoch > 200:
+            with open(args.save_name+str(epoch)+"_trans.txt", 'ab') as f:
+                np.savetxt(f, s_generated.cpu().data.numpy(), fmt='%f')
+        W_loss = torch.mean(LOG2.expand_as(s_outputs) +
+                            logsigmoid(s_outputs)-s_outputs)
+        W_loss += torch.mean(LOG2.expand_as(t_outputs) +
+                             logsigmoid(t_outputs))
+        tracker.add(W_loss.cpu().data, num)
+
+    tracker.tick()
 
     # save models
-        torch.save(netD.cpu().state_dict(), args.save_name+"_netD.pth")
-        torch.save(netG.cpu().state_dict(), args.save_name+"_netG.pth")
+    torch.save(netD.cpu().state_dict(), args.save_name+"_netD.pth")
+    torch.save(netG.cpu().state_dict(), args.save_name+"_netG.pth")
 
-        if torch.cuda.is_available():
-            netD.cuda()
-            netG.cuda()
+    if torch.cuda.is_available():
+        netD.cuda()
+        netG.cuda()
 
     # save tracker
-        with open(args.save_name+"_tracker.pkl", 'wb') as f:
-            pickle.dump(tracker, f)
-        if epoch > 250:
-            print("epoch is correct")
-        if epoch % 5 == 0 and epoch > 5:
-            utils.plot(tracker, epoch, t_inputs.cpu().data.numpy(), args.env, vis)
+    with open(args.save_name+"_tracker.pkl", 'wb') as f:
+        pickle.dump(tracker, f)
+    if epoch > 250:
+        print("epoch is correct")
+    if epoch % 5 == 0 and epoch > 5:
+        utils.plot(tracker, epoch, t_inputs.cpu().data.numpy(), args.env, vis)
