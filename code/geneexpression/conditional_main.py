@@ -78,11 +78,11 @@ def calc_gradient_penalty_rho(netD, real_data, fake_data):
 
 # ============= TRAINING INITIALIZATION ==============
 # initialize discriminator
-netD = cGAN.Discriminator(5964, 600)
+netD = cGAN.Discriminator(5964, 500)
 print("Discriminator loaded")
 
 # initialize generator
-netG = cGAN.Generator(5964, 500)
+netG = cGAN.Generator(5964, 550)
 print("Generator loaded")
 
 if torch.cuda.is_available():
@@ -148,9 +148,9 @@ for epoch in range(args.max_iter):
                 s_generated, clusters), netD(t_inputs, clusters)
             D_real = netD(s_inputs, clusters)
             
-            D_loss_real = fn.binary_cross_entropy_with_logits(D_real, ones_label)
+            D_loss_real = fn.binary_cross_entropy(D_real, ones_label)
             
-            D_loss_fake = fn.binary_cross_entropy_with_logits(s_outputs, zeros_label)
+            D_loss_fake = fn.binary_cross_entropy(s_outputs, zeros_label)
             D_loss = D_loss_real + D_loss_fake
 
             D_loss.backward()
@@ -171,7 +171,7 @@ for epoch in range(args.max_iter):
             s_outputs = netD(s_generated, clusters)
             
             #print(s_outputs.shape, s_generated.shape)
-            G_loss = fn.binary_cross_entropy_with_logits(s_outputs, ones_label)
+            G_loss = fn.binary_cross_entropy(s_outputs, ones_label)
 
             G_loss.backward()
             G_opt.step()
@@ -199,6 +199,8 @@ for epoch in range(args.max_iter):
                             logsigmoid(s_outputs)-s_outputs)
         W_loss += torch.mean(LOG2.expand_as(t_outputs) +
                              logsigmoid(t_outputs))
+        if epoch % 10 == 0 and epoch > 200:
+            print(W_loss.cpu().data)
         tracker.add(W_loss.cpu().data, num)
 
     tracker.tick()
@@ -214,7 +216,5 @@ for epoch in range(args.max_iter):
     # save tracker
     with open(args.save_name+"_tracker.pkl", 'wb') as f:
         pickle.dump(tracker, f)
-    if epoch > 250:
-        print("epoch is correct")
     if epoch % 5 == 0 and epoch > 5:
         utils.plot(tracker, epoch, t_inputs.cpu().data.numpy(), args.env, vis)

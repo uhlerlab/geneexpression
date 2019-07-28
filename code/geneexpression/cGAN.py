@@ -10,20 +10,15 @@ class Discriminator(nn.Module):
         self.nz = nz
         self.net = nn.Sequential(
             nn.Linear(self.dim, self.nz),
-            #nn.BatchNorm1d(self.nz),
             nn.ReLU(),
             nn.Linear(self.nz, self.nz),
-            #nn.BatchNorm1d(self.nz),
-            nn.ReLU(),
-            nn.Linear(self.nz, self.nz),
-            #nn.BatchNorm1d(self.nz),
             nn.ReLU(),
             nn.Linear(self.nz, 1),
+            nn.Sigmoid(),
         )
 
     def forward(self, x, c):
         x = torch.cat((x, c), 1)
-        #x = x.view(-1, self.nz)
         return self.net(x)
 
 
@@ -34,19 +29,16 @@ class Generator(nn.Module):
         self.hidden = hidden
         self.net = nn.Sequential(
             nn.Linear(self.nz, self.hidden),
-            nn.BatchNorm1d(self.hidden),
             nn.ReLU(),
+	    #nn.BatchNorm1d(self.hidden),
             nn.Linear(self.hidden, self.hidden),
-            nn.BatchNorm1d(self.hidden),
             nn.ReLU(),
-            nn.Linear(self.hidden, self.hidden),
-            nn.BatchNorm1d(self.hidden),
-            nn.ReLU(), 
+            #nn.BatchNorm1d(self.hidden),
             nn.Linear(self.hidden, 100),
+	    nn.Sigmoid(),
         )
         self.scale = nn.Sequential(
             nn.Linear(self.nz, self.nz),
-            #nn.BatchNorm1d(self.nz),
             nn.ReLU(),
             nn.Linear(self.nz, 1),
             nn.Softplus(),
