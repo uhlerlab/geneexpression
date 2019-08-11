@@ -13,8 +13,9 @@ class Discriminator(nn.Module):
             nn.ReLU(),
             nn.Linear(self.nz, self.nz),
             nn.ReLU(),
+            nn.Linear(self.nz, self.nz),
+            nn.ReLU(),
             nn.Linear(self.nz, 1),
-            nn.Sigmoid(),
         )
 
     def forward(self, x, c):
@@ -29,13 +30,15 @@ class Generator(nn.Module):
         self.hidden = hidden
         self.net = nn.Sequential(
             nn.Linear(self.nz, self.hidden),
+            nn.BatchNorm1d(self.hidden),
             nn.ReLU(),
-	    #nn.BatchNorm1d(self.hidden),
+	    nn.Linear(self.hidden, self.hidden),
+	    nn.BatchNorm1d(self.hidden),
+            nn.ReLU(),
             nn.Linear(self.hidden, self.hidden),
+            nn.BatchNorm1d(self.hidden),
             nn.ReLU(),
-            #nn.BatchNorm1d(self.hidden),
             nn.Linear(self.hidden, 100),
-	    nn.Sigmoid(),
         )
         self.scale = nn.Sequential(
             nn.Linear(self.nz, self.nz),
